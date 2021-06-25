@@ -10,6 +10,16 @@ Google's library depends on Qt 4, so some other folks rewrote it using the stand
 This project is a Python extension module for the C++ STL port so Python code
 can call into the native library easily. It works in both Python 2 and Python 3.
 
+modify for me(jkh).
+-------
+
+diff_levenshtein method add::
+
+	distance(A, B, timelimit=0, checklines=False)
+	distance_bytes(A, B, timelimit=0, checklines=False)
+	...
+
+
 Example
 -------
 

@@ -216,6 +216,55 @@ diff_match_patch_diff(PyObject *self, PyObject *args, PyObject *kwargs)
     return ret;
 }
 
+template <char FMTSPEC>
+static PyObject *
+diff_match_levenshtein_diff(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    typedef call_traits<FMTSPEC> traits;
+    typename traits::PY_STRING_STORAGE a, b;
+    float timelimit = 0.0;
+    int checklines = 1;
+    int cleanupSemantic = 1;
+    int as_patch = 0;
+    char format_spec[64];
+
+    static char *kwlist[] = {
+        strdup("left_document"),
+        strdup("right_document"),
+        strdup("timelimit"),
+        strdup("checklines"),
+        strdup("cleanup_semantic"),
+        strdup("as_patch"),
+        NULL };
+
+    sprintf(format_spec, "%c%c|fbbbb", FMTSPEC, FMTSPEC);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, format_spec, kwlist,
+                                     &a, &b,
+                                     &timelimit, &checklines, &cleanupSemantic,
+                                     &as_patch))
+        return NULL;
+
+    typedef diff_match_patch<typename traits::STL_STRING_TYPE> DMP;
+    DMP dmp;
+
+    dmp.Diff_Timeout = timelimit;
+    typename DMP::Diffs diff = dmp.diff_main(traits::to_string(a), traits::to_string(b), checklines);
+
+    if (cleanupSemantic)
+        dmp.diff_cleanupSemantic(diff);
+
+    if (as_patch) {
+        typename DMP::Patches patch = dmp.patch_make(traits::to_string(a), diff);
+        typename traits::STL_STRING_TYPE patch_str = dmp.patch_toText(patch);
+
+        return traits::from_string(patch_str);
+    }
+
+    PyObject *ret = Py_BuildValue("l", dmp.diff_levenshtein(diff));
+
+    return ret;
+}
+
 static PyObject *
 diff_match_patch_diff_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
 {
@@ -276,6 +325,12 @@ diff_match_patch_match_main_unicode(PyObject *self, PyObject *args, PyObject *kw
     return diff_match_patch_match_main<'u'>(self, args, kwargs);
 }
 
+static PyObject *
+diff_match_patch_distance_unicode(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_levenshtein_diff<'u'>(self, args, kwargs);
+}
+
 #if PY_MAJOR_VERSION == 2
 static PyObject *
 diff_match_patch_diff_str(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -289,6 +344,12 @@ diff_match_patch_match_main_str(PyObject *self, PyObject *args, PyObject *kwargs
     return diff_match_patch_match_main<'s'>(self, args, kwargs);
 }
 
+static PyObject *
+diff_match_patch_distance_str(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_levenshtein_diff<'s'>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
     {"diff_unicode", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two Unicode strings. Returns a list of tuples (OP, LEN)."},
@@ -298,6 +359,10 @@ static PyMethodDef MyMethods[] = {
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {"match_main_str", (PyCFunction)diff_match_patch_match_main_str, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
+    {"distance_unicode", (PyCFunction)diff_match_patch_distance_unicode, METH_VARARGS|METH_KEYWORDS,
+    "Levenshtein distance in terms of the number of inserted, deleted or substituted characters"},
+    {"distance_str", (PyCFunction)diff_match_patch_distance_str, METH_VARARGS|METH_KEYWORDS,
+    "Levenshtein distance in terms of the number of inserted, deleted or substituted characters"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -321,6 +386,12 @@ diff_match_patch_match_main_bytes(PyObject *self, PyObject *args, PyObject *kwar
     return diff_match_patch_match_main<'y'>(self, args, kwargs);
 }
 
+static PyObject *
+diff_match_patch_distance_bytes(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    return diff_match_levenshtein_diff<'y'>(self, args, kwargs);
+}
+
 static PyMethodDef MyMethods[] = {
     {"diff", (PyCFunction)diff_match_patch_diff_unicode, METH_VARARGS|METH_KEYWORDS,
     "Compute the difference between two strings. Returns a list of tuples (OP, LEN)."},
@@ -330,6 +401,10 @@ static PyMethodDef MyMethods[] = {
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
     {"match_main_bytes", (PyCFunction)diff_match_patch_match_main_bytes, METH_VARARGS|METH_KEYWORDS,
     "Locate the best instance of 'pattern' in 'text' near 'loc'. Returns -1 if no match found."},
+    {"distance", (PyCFunction)diff_match_patch_distance_unicode, METH_VARARGS|METH_KEYWORDS,
+    "Levenshtein distance in terms of the number of inserted, deleted or substituted characters"},
+    {"distance_bytes", (PyCFunction)diff_match_patch_distance_bytes, METH_VARARGS|METH_KEYWORDS,
+    "Levenshtein distance in terms of the number of inserted, deleted or substituted characters"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
